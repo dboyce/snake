@@ -12,16 +12,21 @@ var Snake = function () {
 	dir = {up:'up',down:'down',left:'left',right:'right'},
 	oppositeDirections = [['up','down'], ['left', 'right']],
 	keys = {},
-	snake = {x:10,y:10,dir:dir.down},	
+	snake = {x:10,y:10,dir:dir.down,newDir:null},	
 	food = {},
 	timeout,
 	paused,
-	died;
-	
+	died,
+	score = 0,
+	steps = 0,
+	highscore = 0,        
+	myLocalStorage = localStorage;
+
+
 	var destroy = function() {
-		
+
 		if(timeout) {
-			
+
 			clearInterval(timeout);
 		}
 	};
@@ -41,7 +46,9 @@ var Snake = function () {
 		snake.len = 0;
 		matrix[10][10] = snake;
 		placeFood();
-		loop();
+		loop();		
+		updateHighScore(getHighScore());             
+
 
 		document.onkeydown = function(e) {
 
@@ -50,27 +57,27 @@ var Snake = function () {
 			else if (e) keycode = e.which;
 
 			newDir = keys[keycode];
-			if(newDir && (snake.len > 0 || validateDirection(snake.dir, newDir))) { 
-				snake.dir = newDir; 
+			if(newDir && (snake.len < 1 || validateDirection(snake.dir, newDir))) { 
+				snake.newDir = newDir; 
 			}
 			else { 
-				
+
 				if(keycode === 80) { pause(); }	
 			}
-			
+
 		};
 	};
-	
+
 	var validateDirection = function(dir, newDir) {
-		
+
 		for(var i = 0; i < oppositeDirections.length; i++) {
-			
+
 			if(contains(oppositeDirections[i], newDir)) {
-				
+
 				return !contains(oppositeDirections[i], dir); 
 			}
 		}	
-		
+
 		return true;
 	};
 
@@ -101,24 +108,24 @@ var Snake = function () {
 				else if(current.body) {
 
 					drawSnake(ctx,i,j);
-					
+
 					if(!stopped) { current.tick(); }
 				}							
 			}
 		}
 
 		if(!stopped) {
-			
+
 			moveSnake();
 		}
 		else {
-			
+
 			if(paused) {
-				
+
 				displayMessage(ctx, "PAUSED");				
 			}
 			else {
-				
+
 				displayMessage(ctx, 'YOU DIED');
 			}
 		}
@@ -141,9 +148,9 @@ var Snake = function () {
 		ctx.fillStyle = "rgba(150,150,150,200)";
 		ctx.fillRect(x*cellWidth,y*cellHeight,cellWidth,cellHeight);
 	};
-	
+
 	var displayMessage = function(ctx, message) {	
-		
+
 		ctx.font = "20pt Arial";
 		ctx.fillText(message, width / 2 - 20 * message.length / 2, height / 2 - 10);
 	};
@@ -160,7 +167,7 @@ var Snake = function () {
 
 				finished = true;
 				matrix[x][y] = food;
-				console.log('placed food at: ' + x + ' ' + y);
+				//console.log('placed food at: ' + x + ' ' + y);
 			}
 		}					
 	};
@@ -178,9 +185,32 @@ var Snake = function () {
 		this.body = true;
 	};
 
+	var onEatFood = function(snake) {
+
+		score += (50 - steps);
+		document.getElementById('score').childNodes[0].data = score;
+		steps = 0;
+		updateHighScore(score);               
+	};
+
+	var updateHighScore = function(score) {
+
+		if(score > highscore) {
+			
+			highscore = score;
+			setHighScore(highscore);
+			document.getElementById('highscore').childNodes[0].data = highscore;
+		}
+	}
+
 	var moveSnake = function() {
 
-		var cell,x = snake.x,y = snake.y;					
+		var cell,x = snake.x,y = snake.y;
+		
+		if(snake.newDir !== null) {
+			snake.dir = snake.newDir;
+			snake.newDir = null;
+		}
 
 		if(snake.dir == dir.right) {snake.x++}
 		else if(snake.dir == dir.left) {snake.x--;}
@@ -198,26 +228,28 @@ var Snake = function () {
 		if(cell === food) {
 
 			placeFood();
+			onEatFood(snake);
 			snake.len++;	
 			cell = null;
 		}
-		
+
 		if(cell) {
-			
+
 			died = true;
 		}
 		else {			
-	
+
 			matrix[snake.x][snake.y] = snake;
-			
+
 			if(snake.len > 0) { 
-	
+
 				matrix[x][y] = new Body(x,y,snake.len); 
 			}	
 			else {
-				
+
 				matrix[x][y] = null;
 			}
+			steps++;
 		}
 
 	};
@@ -232,23 +264,24 @@ var Snake = function () {
 		}
 		init();				
 	};
-	
+
 	var random = function(max) { return Math.floor(Math.random()*max+1); };	
 	var pause = function() { paused = !paused; };
 	var empty = function(matrix,x,y) { return !(matrix[x][y]); };
 	var contains = function(a, obj) {
-		
-		  var i = a.length;
-		  while (i--) {
-			  
-		    if (a[i] === obj) {
-		    	
-		      return true;
-		    }
-		    
-		  }
-		  
-		  return false;
-	};
 
+		var i = a.length;
+		while (i--) {
+
+			if (a[i] === obj) {
+
+				return true;
+			}
+
+		}
+
+		return false;
+	};
+	var getHighScore = function() {return myLocalStorage.getItem('highscore') || 0;};
+	var setHighScore = function(score){myLocalStorage.setItem('highscore', score + ''); };
 };
